@@ -1,10 +1,21 @@
 import re
 import uuid
+import gettext
+import locale
 from pathlib import Path
 from gi.repository import Gtk, GLib, Gdk
 from whisp.config import config, DATA_DIR
 from whisp.highlighter import MarkdownHighlighter
 from whisp.text_search import body_match_offsets
+
+try:
+    locale.setlocale(locale.LC_ALL, '')
+    gettext.bindtextdomain('whisp', '/usr/share/locale')
+    gettext.textdomain('whisp')
+except locale.Error:
+    pass
+
+_ = gettext.gettext
 
 class NoteEditor(Gtk.Overlay):
     def __init__(self, file_path=None, on_title_changed=None):
@@ -916,27 +927,27 @@ class NoteEditor(Gtk.Overlay):
         try:
             if cmd == "uppercase":
                 new_text = text.upper()
-                msg = "Converted to UPPERCASE"
+                msg = _("Converted to UPPERCASE")
             elif cmd == "lowercase":
                 new_text = text.lower()
-                msg = "Converted to lowercase"
+                msg = _("Converted to lowercase")
             elif cmd == "title_case":
                 new_text = text.title()
-                msg = "Converted to Title Case"
+                msg = _("Converted to Title Case")
             elif cmd == "sentence_case":
                 import re
                 sentences = re.split(r'(?<=[.!?])\s+', text)
                 new_text = ' '.join(s.capitalize() for s in sentences if s)
                 if not new_text and text: new_text = text.capitalize()
-                msg = "Converted to Sentence case"
+                msg = _("Converted to Sentence case")
             elif cmd == "capitalize_first":
                 import re
                 new_text = re.sub(r'[a-zA-Z]', lambda m: m.group(0).upper(), text, count=1)
-                msg = "Capitalized first letter"
+                msg = _("Capitalized first letter")
             elif cmd == "remove_quotes":
                 import re
                 new_text = re.sub(r'["\'“”‘’]', '', text)
-                msg = "Stripped quotes"
+                msg = _("Stripped quotes")
             elif cmd == "append" and args:
                 new_text = '\n'.join(line + args[0] for line in text.split('\n'))
                 msg = f"Appended '{args[0]}'"
@@ -968,20 +979,20 @@ class NoteEditor(Gtk.Overlay):
                 lines = text.strip('\n').split('\n')
                 if cmd == "sort_lines_alpha":
                     new_text = '\n'.join(sort_sections(lines, lambda c: sorted(c, key=lambda x: (x.strip() == "", x.lower()))))
-                    msg = "Sorted lines alphabetically"
+                    msg = _("Sorted lines alphabetically")
                 elif cmd == "sort_lines_number":
                     import re
                     def get_num(line):
                         m = re.search(r'\d+', line)
                         return float(m.group()) if m else float('inf')
                     new_text = '\n'.join(sort_sections(lines, lambda c: sorted(c, key=lambda x: (x.strip() == "", get_num(x)))))
-                    msg = "Sorted lines numerically"
+                    msg = _("Sorted lines numerically")
                 elif cmd == "sort_lines_reverse":
                     new_text = '\n'.join(sort_sections(lines, lambda c: c[::-1]))
-                    msg = "Reversed line order"
+                    msg = _("Reversed line order")
             elif cmd == "remove_lines_empty":
                 new_text = '\n'.join(line for line in text.split('\n') if line.strip())
-                msg = "Removed empty lines"
+                msg = _("Removed empty lines")
             elif cmd == "remove_lines_with" and args:
                 search = args[0].lower()
                 new_text = '\n'.join(line for line in text.strip('\n').split('\n') if search not in line.lower())
@@ -1000,7 +1011,7 @@ class NoteEditor(Gtk.Overlay):
                 msg = f"Kept lines without '{args[0]}'"
             elif cmd == "trim_each_whitespace":
                 new_text = '\n'.join(line.strip() for line in text.split('\n'))
-                msg = "Trimmed whitespace from all lines"
+                msg = _("Trimmed whitespace from all lines")
             elif cmd == "dedupe_lines":
                 seen = set()
                 res = []
@@ -1009,7 +1020,7 @@ class NoteEditor(Gtk.Overlay):
                         seen.add(line)
                         res.append(line)
                 new_text = '\n'.join(res)
-                msg = "Removed duplicate lines"
+                msg = _("Removed duplicate lines")
             elif cmd == "get_dupes":
                 lines = text.strip('\n').split('\n')
                 counts = {}
@@ -1020,13 +1031,13 @@ class NoteEditor(Gtk.Overlay):
                 dupes = [f"{count}x: {line}" for line, count in counts.items() if count > 1]
                 if dupes:
                     new_text = text + "\n\n--- Duplicates ---\n" + '\n'.join(dupes)
-                    msg = "Found duplicate lines"
+                    msg = _("Found duplicate lines")
                 else:
-                    msg = "No duplicates found"
+                    msg = _("No duplicates found")
             elif cmd == "commas_to_list":
                 items = [item.strip() for item in text.replace('\n', ',').split(',')]
                 new_text = '\n'.join(f"- {item}" for item in items if item)
-                msg = "Converted commas to list"
+                msg = _("Converted commas to list")
             elif cmd == "commas_to" and args:
                 items = [item.strip() for item in text.replace('\n', ',').split(',')]
                 new_text = args[0].join(item for item in items if item)
@@ -1034,7 +1045,7 @@ class NoteEditor(Gtk.Overlay):
             elif cmd == "lines_to_commas":
                 items = [line.strip() for line in text.split('\n') if line.strip()]
                 new_text = ', '.join(items)
-                msg = "Converted lines to comma-separated"
+                msg = _("Converted lines to comma-separated")
             elif cmd == "lines_to" and args:
                 items = [line.strip() for line in text.split('\n') if line.strip()]
                 new_text = args[0].join(items)
@@ -1050,13 +1061,13 @@ class NoteEditor(Gtk.Overlay):
                     else:
                         unchecked.append(line)
                 new_text = '\n'.join(unchecked + checked)
-                msg = "Moved checked items to bottom"
+                msg = _("Moved checked items to bottom")
             elif cmd == "remove_checked":
                 import re
                 lines = text.strip('\n').split('\n')
                 unchecked = [line for line in lines if not (re.match(r'^(\s*)☑', line) or "- [x]" in line.lower() or "- [X]" in line)]
                 new_text = '\n'.join(unchecked)
-                msg = "Removed all checked items"
+                msg = _("Removed all checked items")
                 
             if new_text != text:
                 self.buffer.delete(start_iter, end_iter)

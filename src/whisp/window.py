@@ -1,11 +1,22 @@
 import re
 import os
 import shutil
+import gettext
+import locale
 from pathlib import Path
 from gi.repository import Gtk, Adw, Gdk, Gio, GLib, Pango
 from whisp.config import config, DATA_DIR, TRASH_DIR
 from whisp.editor import NoteEditor
 from whisp.text_search import iter_body_match_offsets
+
+try:
+    locale.setlocale(locale.LC_ALL, '')
+    gettext.bindtextdomain('whisp', '/usr/share/locale')
+    gettext.textdomain('whisp')
+except locale.Error:
+    pass
+
+_ = gettext.gettext
 
 class ThemeSnippet(Gtk.ToggleButton):
     def __init__(self, theme_id, group=None):
@@ -30,7 +41,7 @@ class ThemeSnippet(Gtk.ToggleButton):
         self.set_child(box)
 
 shortcuts_xml = """
-<interface>
+<interface domain="whisp">
   <object class="AdwShortcutsDialog" id="shortcuts_dialog">
     <child>
       <object class="AdwShortcutsSection">
@@ -187,7 +198,7 @@ shortcuts_xml = """
 
 class ChangelogWindow(Adw.Dialog):
     def __init__(self, version, releases_list, parent=None):
-        super().__init__(title="What's New")
+        super().__init__(title=_("What's New"))
         self.set_content_width(450)
         self.set_content_height(600)
         
@@ -282,7 +293,7 @@ class ChangelogWindow(Adw.Dialog):
         desc_lbl.set_markup(desc_text)
         content_box.append(desc_lbl)
         
-        notes_btn = Gtk.Button(label="Read Full Release Notes →")
+        notes_btn = Gtk.Button(label=_("Read Full Release Notes →"))
         notes_btn.add_css_class("pill")
         notes_btn.set_halign(Gtk.Align.CENTER)
         notes_btn.set_margin_top(16)
@@ -293,18 +304,18 @@ class ChangelogWindow(Adw.Dialog):
         support_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         support_box.add_css_class("support-banner")
         
-        support_title = Gtk.Label(label="<b>This release was made possible by users like you!</b>")
+        support_title = Gtk.Label(label=_("<b>This release was made possible by users like you!</b>"))
         support_title.set_use_markup(True)
         support_title.set_justify(Gtk.Justification.CENTER)
         support_title.set_wrap(True)
         
-        support_desc = Gtk.Label(label="<small>I love building Whisp, but I cannot do it alone. Help support further development by donating.</small>")
+        support_desc = Gtk.Label(label=_("<small>I love building Whisp, but I cannot do it alone. Help support further development by donating.</small>"))
         support_desc.set_use_markup(True)
         support_desc.set_justify(Gtk.Justification.CENTER)
         support_desc.set_wrap(True)
         
         donate_btn = Gtk.Button()
-        donate_btn.set_child(Adw.ButtonContent(label="Donate to Whisp", icon_name="emblem-favorite-symbolic"))
+        donate_btn.set_child(Adw.ButtonContent(label=_("Donate to Whisp"), icon_name="emblem-favorite-symbolic"))
         donate_btn.add_css_class("pill")
         donate_btn.add_css_class("support-btn")
         donate_btn.set_halign(Gtk.Align.CENTER)
@@ -345,7 +356,7 @@ class WhispWindow(Adw.ApplicationWindow):
             self.maximize()
             
         from whisp.main import IS_DEV_MODE
-        title = "Whisp (Development)" if IS_DEV_MODE else "Whisp"
+        title=_("Whisp (Development)") if IS_DEV_MODE else "Whisp"
         self.set_title(title)
         self.connect("close-request", self.on_close_request)
         
@@ -854,7 +865,7 @@ class WhispWindow(Adw.ApplicationWindow):
                 
                 if hasattr(self, '_pin_toast') and self._pin_toast:
                     self._pin_toast.dismiss()
-                self._pin_toast = Adw.Toast.new("Note Pinned to front")
+                self._pin_toast = Adw.Toast.new(_("Note Pinned to front"))
                 self.toast_overlay.add_toast(self._pin_toast)
             else:
                 self.carousel.remove(current_page)
@@ -884,7 +895,7 @@ class WhispWindow(Adw.ApplicationWindow):
                 
                 if hasattr(self, '_pin_toast') and self._pin_toast:
                     self._pin_toast.dismiss()
-                self._pin_toast = Adw.Toast.new("Note Unpinned")
+                self._pin_toast = Adw.Toast.new(_("Note Unpinned"))
                 self.toast_overlay.add_toast(self._pin_toast)
                 
         except Exception as e:
@@ -1071,7 +1082,7 @@ class WhispWindow(Adw.ApplicationWindow):
             text = editor.buffer.get_text(start, end, True)
             from gi.repository import GObject
             editor.textview.get_clipboard().set(text)
-            self.toast_overlay.add_toast(Adw.Toast.new("Note Copied"))
+            self.toast_overlay.add_toast(Adw.Toast.new(_("Note Copied")))
 
     def on_bump_note(self, action=None, param=None):
         editor = self.get_current_editor()
@@ -1094,7 +1105,7 @@ class WhispWindow(Adw.ApplicationWindow):
                 GLib.idle_add(animate_bump)
                 GLib.timeout_add(50, animate_bump)
                     
-            self.toast_overlay.add_toast(Adw.Toast.new("Note moved to front"))
+            self.toast_overlay.add_toast(Adw.Toast.new(_("Note moved to front")))
 
     def on_new_note(self, action=None, param=None):
         n_pages = self.carousel.get_n_pages()
@@ -1127,7 +1138,7 @@ class WhispWindow(Adw.ApplicationWindow):
         if editor.is_empty():
             if hasattr(self, 'current_toast') and self.current_toast:
                 self.current_toast.dismiss()
-            self.current_toast = Adw.Toast.new("Cannot delete the default empty note")
+            self.current_toast = Adw.Toast.new(_("Cannot delete the default empty note"))
             self.toast_overlay.add_toast(self.current_toast)
             return
 
@@ -1473,11 +1484,11 @@ class WhispWindow(Adw.ApplicationWindow):
         pref_window = Adw.PreferencesDialog()
         
         # --- Appearance Page ---
-        appearance_page = Adw.PreferencesPage(title="Appearance", icon_name="preferences-desktop-appearance-symbolic")
+        appearance_page = Adw.PreferencesPage(title=_("Appearance"), icon_name="preferences-desktop-appearance-symbolic")
         
         # Appearance Group
-        font_group = Adw.PreferencesGroup(title="Text")
-        font_row = Adw.ActionRow(title="Editor Font")
+        font_group = Adw.PreferencesGroup(title=_("Text"))
+        font_row = Adw.ActionRow(title=_("Editor Font"))
         
         font_dialog = Gtk.FontDialog()
         font_btn = Gtk.FontDialogButton()
@@ -1494,7 +1505,7 @@ class WhispWindow(Adw.ApplicationWindow):
         font_group.add(font_row)
         
         # Theme Snippets Group
-        theme_group = Adw.PreferencesGroup(title="Paper Theme")
+        theme_group = Adw.PreferencesGroup(title=_("Paper Theme"))
         
         flowbox = Gtk.FlowBox()
         flowbox.set_valign(Gtk.Align.START)
@@ -1524,7 +1535,7 @@ class WhispWindow(Adw.ApplicationWindow):
         appearance_page.add(theme_group)
         
         # Line Spacing
-        spacing_row = Adw.ActionRow(title="Line Spacing")
+        spacing_row = Adw.ActionRow(title=_("Line Spacing"))
         spacing_model = Gtk.StringList.new(["1.0", "1.2", "1.5", "2.0"])
         spacing_dropdown = Gtk.DropDown(model=spacing_model)
         spacing_dropdown.set_valign(Gtk.Align.CENTER)
@@ -1544,14 +1555,14 @@ class WhispWindow(Adw.ApplicationWindow):
         pref_window.add(appearance_page)
 
         # --- Behavior Page ---
-        behavior_page = Adw.PreferencesPage(title="Behavior", icon_name="preferences-system-symbolic")
+        behavior_page = Adw.PreferencesPage(title=_("Behavior"), icon_name="preferences-system-symbolic")
 
         # Behavior Group
-        behavior_group = Adw.PreferencesGroup(title="Workflow")
+        behavior_group = Adw.PreferencesGroup(title=_("Workflow"))
         
         wysiwyg_scope_row = Adw.ActionRow(
-            title="WYSIWYG Scope",
-            subtitle="Apply Live Formatting globally to all notes, or remember it per note."
+            title=_("WYSIWYG Scope"),
+            subtitle=_("Apply Live Formatting globally to all notes, or remember it per note.")
         )
         wysiwyg_scope_model = Gtk.StringList.new(["Global", "Per Note"])
         wysiwyg_scope_dropdown = Gtk.DropDown(model=wysiwyg_scope_model)
@@ -1565,7 +1576,7 @@ class WhispWindow(Adw.ApplicationWindow):
         wysiwyg_scope_row.add_suffix(wysiwyg_scope_dropdown)
         behavior_group.add(wysiwyg_scope_row)
         
-        startup_row = Adw.ActionRow(title="Startup Behavior")
+        startup_row = Adw.ActionRow(title=_("Startup Behavior"))
         startup_model = Gtk.StringList.new(["Restore last active note", "Start with empty note"])
         startup_dropdown = Gtk.DropDown(model=startup_model)
         startup_dropdown.set_valign(Gtk.Align.CENTER)
@@ -1579,8 +1590,8 @@ class WhispWindow(Adw.ApplicationWindow):
         behavior_group.add(startup_row)
 
         archive_row = Adw.ActionRow(
-            title="Auto-Archive Inactive Notes",
-            subtitle="Notes are not deleted. They are simply hidden from the app to reduce clutter, but remain fully searchable via Ctrl+F.",
+            title=_("Auto-Archive Inactive Notes"),
+            subtitle=_("Notes are not deleted. They are simply hidden from the app to reduce clutter, but remain fully searchable via Ctrl+F."),
         )
         archive_model = Gtk.StringList.new(["Never", "1 Week", "1 Month", "1 Year"])
         archive_dropdown = Gtk.DropDown(model=archive_model)
@@ -1601,8 +1612,8 @@ class WhispWindow(Adw.ApplicationWindow):
         behavior_group.add(archive_row)
 
         carousel_size_row = Adw.ActionRow(
-            title="Max Carousel Size",
-            subtitle="Limit the number of notes loaded into the swipable carousel. Older notes remain fully searchable.",
+            title=_("Max Carousel Size"),
+            subtitle=_("Limit the number of notes loaded into the swipable carousel. Older notes remain fully searchable."),
         )
         carousel_size_model = Gtk.StringList.new(["10 Notes", "25 Notes", "50 Notes", "Unlimited"])
         carousel_size_dropdown = Gtk.DropDown(model=carousel_size_model)
@@ -1623,8 +1634,8 @@ class WhispWindow(Adw.ApplicationWindow):
         behavior_group.add(carousel_size_row)
 
         confirm_row = Adw.ActionRow(
-            title="Confirm Before Deleting",
-            subtitle="Ask for confirmation when deleting a note",
+            title=_("Confirm Before Deleting"),
+            subtitle=_("Ask for confirmation when deleting a note"),
         )
         confirm_switch = Gtk.Switch()
         confirm_switch.set_valign(Gtk.Align.CENTER)
@@ -1635,8 +1646,8 @@ class WhispWindow(Adw.ApplicationWindow):
         behavior_group.add(confirm_row)
         
         toast_row = Adw.ActionRow(
-            title="Show Command Confirmations",
-            subtitle="Display a small confirmation message when you use a text manipulation command",
+            title=_("Show Command Confirmations"),
+            subtitle=_("Display a small confirmation message when you use a text manipulation command"),
         )
         toast_switch = Gtk.Switch()
         toast_switch.set_valign(Gtk.Align.CENTER)
@@ -1651,8 +1662,8 @@ class WhispWindow(Adw.ApplicationWindow):
         behavior_group.add(toast_row)
         
         start_slate_row = Adw.ActionRow(
-            title="Enable Slate Mode on Startup",
-            subtitle="Always launch Whisp directly into Slate Mode"
+            title=_("Enable Slate Mode on Startup"),
+            subtitle=_("Always launch Whisp directly into Slate Mode")
         )
         start_slate_switch = Gtk.Switch()
         start_slate_switch.set_valign(Gtk.Align.CENTER)
@@ -1669,11 +1680,11 @@ class WhispWindow(Adw.ApplicationWindow):
         behavior_page.add(behavior_group)
 
         # --- Running Group ---
-        running_group = Adw.PreferencesGroup(title="Running")
+        running_group = Adw.PreferencesGroup(title=_("Running"))
 
         self.bg_row = Adw.ActionRow(
-            title="Keep Running in Background",
-            subtitle="Hides the application when closed instead of terminating",
+            title=_("Keep Running in Background"),
+            subtitle=_("Hides the application when closed instead of terminating"),
         )
         self.bg_switch = Gtk.Switch()
         self.bg_switch.set_valign(Gtk.Align.CENTER)
@@ -1684,8 +1695,8 @@ class WhispWindow(Adw.ApplicationWindow):
         running_group.add(self.bg_row)
 
         self.startup_row = Adw.ActionRow(
-            title="Run on Startup",
-            subtitle="Automatically launch the application when you log in",
+            title=_("Run on Startup"),
+            subtitle=_("Automatically launch the application when you log in"),
         )
         self.startup_switch = Gtk.Switch()
         self.startup_switch.set_valign(Gtk.Align.CENTER)
@@ -1696,8 +1707,8 @@ class WhispWindow(Adw.ApplicationWindow):
         running_group.add(self.startup_row)
 
         self.hidden_row = Adw.ActionRow(
-            title="Start Hidden",
-            subtitle="Launch in the background without opening a window",
+            title=_("Start Hidden"),
+            subtitle=_("Launch in the background without opening a window"),
         )
         self.hidden_switch = Gtk.Switch()
         self.hidden_switch.set_valign(Gtk.Align.CENTER)
@@ -1712,14 +1723,14 @@ class WhispWindow(Adw.ApplicationWindow):
         pref_window.add(behavior_page)
 
         # --- Storage Page ---
-        storage_page = Adw.PreferencesPage(title="Storage", icon_name="drive-harddisk-symbolic")
+        storage_page = Adw.PreferencesPage(title=_("Storage"), icon_name="drive-harddisk-symbolic")
 
         # Storage Group
-        storage_group = Adw.PreferencesGroup(title="Data Location")
+        storage_group = Adw.PreferencesGroup(title=_("Data Location"))
         
-        row = Adw.ActionRow(title="Notes Directory", subtitle=str(DATA_DIR))
+        row = Adw.ActionRow(title=_("Notes Directory"), subtitle=str(DATA_DIR))
         
-        btn = Gtk.Button(label="Change...")
+        btn = Gtk.Button(label=_("Change..."))
         btn.set_valign(Gtk.Align.CENTER)
         btn.connect("clicked", self.on_change_dir, row)
         row.add_suffix(btn)
@@ -1891,7 +1902,7 @@ class WhispWindow(Adw.ApplicationWindow):
 
     def on_change_dir(self, btn, row):
         dialog = Gtk.FileDialog()
-        dialog.set_title("Select Notes Directory")
+        dialog.set_title(_("Select Notes Directory"))
         dialog.select_folder(self, None, self.on_folder_selected, row)
 
     def on_folder_selected(self, dialog, result, row):
