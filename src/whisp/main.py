@@ -125,6 +125,11 @@ class WhispApp(Adw.Application):
         if hasattr(self, 'start_hidden') and self.start_hidden:
             self.start_hidden = False
         else:
+            if win and not win.is_visible():
+                from whisp.config import config
+                if config.get("startup_behavior", "last_note") == "empty_note":
+                    win.ensure_empty_note_at_end()
+                    win.on_nav_last()
             win.present()
 
     def do_open(self, files, n_files, hint):
