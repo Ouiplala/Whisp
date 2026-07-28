@@ -557,10 +557,10 @@ class WhispWindow(Adw.ApplicationWindow):
         main_menu.append_item(theme_item)
         
         section = Gio.Menu()
-        section.append("What's New", "win.whats-new")
-        section.append("Keyboard Shortcuts", "win.show-shortcuts")
-        section.append("Preferences", "win.preferences")
-        section.append("About Whisp", "win.about")
+        section.append(_("What's New"), "win.whats-new")
+        section.append(_("Keyboard Shortcuts"), "win.show-shortcuts")
+        section.append(_("Preferences"), "win.preferences")
+        section.append(_("About Whisp"), "win.about")
         main_menu.append_section(None, section)
         
         popover = Gtk.PopoverMenu.new_from_model(main_menu)
@@ -916,7 +916,7 @@ class WhispWindow(Adw.ApplicationWindow):
             config.set("first_run", False)
             welcome_file = DATA_DIR / "Welcome to Whisp.md"
             if not welcome_file.exists():
-                welcome_text = (
+                welcome_text = _(
                     "# 👋 Welcome to Whisp!\n\n"
                     "Whisp is the frictionless anti-note. There are no save buttons or files to manage here.\n\n"
                     "## Navigation\n"
@@ -927,9 +927,9 @@ class WhispWindow(Adw.ApplicationWindow):
                     "🔗 **Smart Links**: Paste any long URL, and Whisp will automatically shorten it to keep your notes clean.\n"
                     "📋 **Plain Paste**: Use `Ctrl+Shift+V` to paste text cleanly without weird formatting.\n"
                     "🎨 **Themes**: Open Preferences (`Ctrl+,`) to pick a paper background (like Grid or Dotted) and color scheme.\n\n"
-                    "📖 **Manual**: For a full list of features, check out the [User Manual](https://tanaybhomia.github.io/Whisp/manual.html)\n\n"
+                    "📖 **Manual**: For a full list of features, check out the [User Manual]({url})\n\n"
                     "🗑️ Press `Ctrl+D` to delete this note when you're done reading it!"
-                )
+                ).format(url="https://tanaybhomia.github.io/Whisp/manual.html")
                 welcome_file.write_text(welcome_text, encoding='utf-8')
                 
         files = sorted(DATA_DIR.glob("*.md"), key=lambda f: os.path.getmtime(f) if f.exists() else 0, reverse=True)
@@ -1155,11 +1155,11 @@ class WhispWindow(Adw.ApplicationWindow):
 
         title = editor.get_title()
         dialog = Adw.AlertDialog(
-            heading="Delete Note?",
-            body=f"“{title}” will be moved to the trash. You can undo this with Ctrl+Shift+T.",
+            heading=_("Delete Note?"),
+            body=_("“{title}” will be moved to the trash. You can undo this with Ctrl+Shift+T.").format(title=title),
         )
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("delete", "Delete")
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("delete", _("Delete"))
         dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.set_default_response("cancel")
         dialog.set_close_response("cancel")
@@ -1184,7 +1184,7 @@ class WhispWindow(Adw.ApplicationWindow):
                 break
         self.last_deleted_index = idx if idx != -1 else None
 
-        toast_msg = "Note deleted"
+        toast_msg = _("Note deleted")
         if editor.file_path.exists():
             try:
                 TRASH_DIR.mkdir(parents=True, exist_ok=True)
@@ -1202,9 +1202,9 @@ class WhispWindow(Adw.ApplicationWindow):
                 try:
                     editor.file_path.unlink(missing_ok=True)
                     self.last_deleted_file = None
-                    toast_msg = f"Permanent delete fallback (Error: {str(e)})"
+                    toast_msg = _("Permanent delete fallback (Error: {error})").format(error=str(e))
                 except Exception as e2:
-                    toast_msg = f"Failed to delete completely: {e2}"
+                    toast_msg = _("Failed to delete completely: {error}").format(error=str(e2))
         else:
             # Note was never saved to disk
             self.last_deleted_file = None
@@ -1570,7 +1570,7 @@ class WhispWindow(Adw.ApplicationWindow):
             title=_("WYSIWYG Scope"),
             subtitle=_("Apply Live Formatting globally to all notes, or remember it per note.")
         )
-        wysiwyg_scope_model = Gtk.StringList.new(["Global", "Per Note"])
+        wysiwyg_scope_model = Gtk.StringList.new([_("Global"), _("Per Note")])
         wysiwyg_scope_dropdown = Gtk.DropDown(model=wysiwyg_scope_model)
         wysiwyg_scope_dropdown.set_valign(Gtk.Align.CENTER)
         
@@ -1583,7 +1583,7 @@ class WhispWindow(Adw.ApplicationWindow):
         behavior_group.add(wysiwyg_scope_row)
         
         startup_row = Adw.ActionRow(title=_("Startup Behavior"))
-        startup_model = Gtk.StringList.new(["Restore last active note", "Start with empty note"])
+        startup_model = Gtk.StringList.new([_("Restore last active note"), _("Start with empty note")])
         startup_dropdown = Gtk.DropDown(model=startup_model)
         startup_dropdown.set_valign(Gtk.Align.CENTER)
         
@@ -1599,7 +1599,7 @@ class WhispWindow(Adw.ApplicationWindow):
             title=_("Auto-Archive Inactive Notes"),
             subtitle=_("Notes are not deleted. They are simply hidden from the app to reduce clutter, but remain fully searchable via Ctrl+F."),
         )
-        archive_model = Gtk.StringList.new(["Never", "1 Week", "1 Month", "1 Year"])
+        archive_model = Gtk.StringList.new([_("Never"), _("1 Week"), _("1 Month"), _("1 Year")])
         archive_dropdown = Gtk.DropDown(model=archive_model)
         archive_dropdown.set_valign(Gtk.Align.CENTER)
         
@@ -1621,7 +1621,7 @@ class WhispWindow(Adw.ApplicationWindow):
             title=_("Max Carousel Size"),
             subtitle=_("Limit the number of notes loaded into the swipable carousel. Older notes remain fully searchable."),
         )
-        carousel_size_model = Gtk.StringList.new(["10 Notes", "25 Notes", "50 Notes", "Unlimited"])
+        carousel_size_model = Gtk.StringList.new([_("10 Notes"), _("25 Notes"), _("50 Notes"), _("Unlimited")])
         carousel_size_dropdown = Gtk.DropDown(model=carousel_size_model)
         carousel_size_dropdown.set_valign(Gtk.Align.CENTER)
         
@@ -1995,7 +1995,7 @@ class WhispWindow(Adw.ApplicationWindow):
         if hasattr(self, '_slate_toast') and self._slate_toast:
             self._slate_toast.dismiss()
             
-        status = "Entered Slate mode" if self.is_slate_mode else "Exited Slate mode"
+        status = _("Entered Slate mode") if self.is_slate_mode else _("Exited Slate mode")
         self._slate_toast = Adw.Toast.new(status)
         self.toast_overlay.add_toast(self._slate_toast)
     def on_mouse_motion(self, controller, x, y):
