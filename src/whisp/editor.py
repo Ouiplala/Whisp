@@ -10,7 +10,7 @@ import threading
 
 try:
     import pytesseract
-    from PIL import Image
+    from PIL import Image, ImageOps
     HAS_OCR = True
 except ImportError:
     HAS_OCR = False
@@ -1426,10 +1426,68 @@ class NoteEditor(Gtk.Overlay):
                         # This mathematically enhances small/blurry text for the neural net.
                         width, height = img.size
                         if width < 3000 and height < 3000:  # Prevent memory explosions on already-massive images
-                            img = img.resize((width * 2, height * 2), Image.Resampling.LANCZOS)
+                            img = img.resize((width * 2, height * 2), Image.Resampling.BILINEAR)
                         
-                        # Extract text using Tesseract
-                        extracted_text = pytesseract.image_to_string(img)
+                        # Add a white border so Tesseract doesn't fail on text too close to the edge
+                        img = ImageOps.expand(img, border=20, fill='white')
+                        
+                        # Instead of image_to_string which strips leading whitespace, 
+                        # we extract raw bounding box data to mathematically reconstruct exact indentation!
+                        data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, config='--psm 6')
+                        
+                        lines = {}
+                        char_widths = []
+                        
+                        for i in range(len(data['text'])):
+                            word = data['text'][i].strip()
+                            if not word:
+                                continue
+                                
+                            line_num = data['line_num'][i]
+                            block_num = data['block_num'][i]
+                            par_num = data['par_num'][i]
+                            
+                            char_widths.append(data['width'][i] / len(word))
+                            
+                            key = (block_num, par_num, line_num)
+                            if key not in lines:
+                                lines[key] = []
+                                
+                            lines[key].append({
+                                'text': word,
+                                'left': data['left'][i],
+                                'width': data['width'][i]
+                            })
+                            
+                        char_widths.sort()
+                        median_char_width = char_widths[len(char_widths)//2] if char_widths else 20
+                        # Multiply by 1.2 because spaces are usually slightly wider than average characters
+                        space_width = median_char_width * 1.2 
+                        
+                        out = []
+                        min_left = min([words[0]['left'] for words in lines.values()]) if lines else 0
+                        
+                        for key in sorted(lines.keys()):
+                            words = lines[key]
+                            first_left = words[0]['left']
+                            
+                            # Calculate leading spaces for perfect indentation
+                            indent_spaces = int(round((first_left - min_left) / space_width))
+                            line_str = " " * indent_spaces
+                            
+                            for j, w in enumerate(words):
+                                line_str += w['text']
+                                # Add interword spaces based on actual pixel distance
+                                if j < len(words) - 1:
+                                    next_left = words[j+1]['left']
+                                    curr_right = w['left'] + w['width']
+                                    gap = next_left - curr_right
+                                    spaces = max(1, int(round(gap / space_width)))
+                                    line_str += " " * spaces
+                                    
+                            out.append(line_str)
+                            
+                        extracted_text = "\n".join(out)
                         
                         elapsed = time.time() - start_time
                         benchmark_str = f"[OCR Benchmark] Extracted {len(extracted_text)} chars in {elapsed:.3f} seconds."
@@ -1467,7 +1525,7 @@ class NoteEditor(Gtk.Overlay):
 
     def _insert_extracted_text(self, text):
         self.buffer.delete_selection(True, self.textview.get_editable())
-        self.buffer.insert_at_cursor(f"\n{text.strip()}\n")
+        self.buffer.insert_at_cursor(text.strip())
         return False
         
     def _show_ocr_error(self, msg):
