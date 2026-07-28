@@ -55,7 +55,7 @@ shortcuts_xml = """
         <child>
           <object class="AdwShortcutsItem">
             <property name="title">Delete Note</property>
-            <property name="accelerator">&lt;Primary&gt;Delete</property>
+            <property name="accelerator">&lt;Primary&gt;d &lt;Shift&gt;Delete</property>
           </object>
         </child>
         <child>

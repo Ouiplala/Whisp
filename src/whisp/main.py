@@ -24,7 +24,7 @@ class WhispApp(Adw.Application):
             icon_theme.add_search_path(str(icon_dir))
             
         self.set_accels_for_action("win.new-note", ["<Ctrl>n"])
-        self.set_accels_for_action("win.delete-note", ["<Ctrl>d", "<Ctrl>Delete"])
+        self.set_accels_for_action("win.delete-note", ["<Ctrl>d", "<Shift>Delete"])
         self.set_accels_for_action("win.preferences", ["<Ctrl>comma"])
         self.set_accels_for_action("win.toggle-wysiwyg", ["<Ctrl>e"])
         self.set_accels_for_action("win.undo-delete", ["<Ctrl><Shift>t"])
