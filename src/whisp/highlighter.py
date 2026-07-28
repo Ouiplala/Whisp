@@ -158,7 +158,7 @@ class MarkdownHighlighter:
             self.buffer.apply_tag(self.tag_bullet_bold, start_iter, bullet_end_iter)
             
         # Apply bold (**text**)
-        for m in re.finditer(r'(\*\*)(.*?)(\*\*)', text):
+        for m in re.finditer(r'(?<!\\)(\*\*)(.*?)(?<!\\)(\*\*)', text):
             start_iter = self.buffer.get_iter_at_offset(m.start())
             end_iter = self.buffer.get_iter_at_offset(m.end())
             self.buffer.apply_tag(self.tag_bold, start_iter, end_iter)
@@ -167,7 +167,7 @@ class MarkdownHighlighter:
                 apply_invisible(m, 3)
             
         # Apply italic (*text*)
-        for m in re.finditer(r'(?<!\*)(\*)([^\*]+)(\*)', text):
+        for m in re.finditer(r'(?<!\\)(?<!\*)(\*)((?:[^\*\\]|\\.)+)(?<!\\)(\*)(?!\*)', text):
             start_iter = self.buffer.get_iter_at_offset(m.start())
             end_iter = self.buffer.get_iter_at_offset(m.end())
             self.buffer.apply_tag(self.tag_italic, start_iter, end_iter)
