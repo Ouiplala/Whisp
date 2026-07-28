@@ -3,7 +3,17 @@ import uuid
 import gettext
 import locale
 from pathlib import Path
-from gi.repository import Gtk, GLib, Gdk
+from gi.repository import Gtk, GLib, Gdk, Adw
+import os
+import tempfile
+import threading
+
+try:
+    import pytesseract
+    from PIL import Image
+    HAS_OCR = True
+except ImportError:
+    HAS_OCR = False
 from whisp.config import config, DATA_DIR
 from whisp.highlighter import MarkdownHighlighter
 from whisp.text_search import body_match_offsets
@@ -1377,7 +1387,89 @@ class NoteEditor(Gtk.Overlay):
 
     def handle_smart_paste(self):
         clipboard = self.textview.get_clipboard()
-        clipboard.read_text_async(None, self.on_smart_paste_read)
+        formats = clipboard.get_formats()
+        
+        # Check if the clipboard contains an image (texture)
+        if HAS_OCR and formats.contain_gtype(Gdk.Texture.__gtype__):
+            clipboard.read_texture_async(None, self.on_smart_paste_texture_read)
+        else:
+            clipboard.read_text_async(None, self.on_smart_paste_read)
+
+    def on_smart_paste_texture_read(self, clipboard, result):
+        try:
+            texture = clipboard.read_texture_finish(result)
+            if texture:
+                # Show toast notification about OCR extraction
+                window = self.get_root()
+                toast = None
+                if hasattr(window, 'toast_overlay'):
+                    toast = Adw.Toast.new(_("Extracting text from image..."))
+                    toast.set_timeout(0)  # Make it persistent until we dismiss it manually
+                    window.toast_overlay.add_toast(toast)
+                    
+                # Run OCR in a background thread to avoid freezing the UI
+                def run_ocr():
+                    import time
+                    start_time = time.time()
+                    try:
+                        import io
+                        
+                        # Use purely in-memory processing instead of disk I/O
+                        png_bytes = texture.save_to_png_bytes()
+                        img = Image.open(io.BytesIO(png_bytes.get_data()))
+                        
+                        # Convert to grayscale ('L' mode) to significantly speed up Tesseract
+                        # and reduce memory/CPU overhead, as color data isn't needed for OCR
+                        img = img.convert('L')
+                        
+                        # Extract text using Tesseract
+                        extracted_text = pytesseract.image_to_string(img)
+                        
+                        elapsed = time.time() - start_time
+                        benchmark_str = f"[OCR Benchmark] Extracted {len(extracted_text)} chars in {elapsed:.3f} seconds."
+                        print(benchmark_str)
+                        
+                        def on_success():
+                            if toast:
+                                toast.dismiss()
+                            self._insert_extracted_text(f"{extracted_text}\n\n*{benchmark_str}*")
+                            return False
+                            
+                        def on_empty():
+                            if toast:
+                                toast.dismiss()
+                            self._show_ocr_error(_("No text found in image"))
+                            return False
+                            
+                        if extracted_text.strip():
+                            GLib.idle_add(on_success)
+                        else:
+                            GLib.idle_add(on_empty)
+                    except Exception as e:
+                        elapsed = time.time() - start_time
+                        print(f"OCR Error after {elapsed:.3f}s: {e}")
+                        def on_error():
+                            if toast:
+                                toast.dismiss()
+                            self._show_ocr_error(_("Failed to extract text from image"))
+                            return False
+                        GLib.idle_add(on_error)
+                        
+                threading.Thread(target=run_ocr, daemon=True).start()
+        except GLib.Error as e:
+            print(f"Failed to read texture from clipboard: {e}")
+
+    def _insert_extracted_text(self, text):
+        self.buffer.delete_selection(True, self.textview.get_editable())
+        self.buffer.insert_at_cursor(f"\n{text.strip()}\n")
+        return False
+        
+    def _show_ocr_error(self, msg):
+        window = self.get_root()
+        if hasattr(window, 'toast_overlay'):
+            toast = Adw.Toast.new(msg)
+            window.toast_overlay.add_toast(toast)
+        return False
 
     def on_smart_paste_read(self, clipboard, result):
         try:
