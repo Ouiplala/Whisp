@@ -1438,7 +1438,7 @@ class NoteEditor(Gtk.Overlay):
                         def on_success():
                             if toast:
                                 toast.dismiss()
-                            self._insert_extracted_text(f"{extracted_text}\n\n*{benchmark_str}*")
+                            self._insert_extracted_text(extracted_text)
                             return False
                             
                         def on_empty():
