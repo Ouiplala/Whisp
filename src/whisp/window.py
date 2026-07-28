@@ -190,6 +190,12 @@ shortcuts_xml = """
             <property name="accelerator">&lt;Primary&gt;e</property>
           </object>
         </child>
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title">Toggle Slate Mode</property>
+            <property name="accelerator">&lt;Alt&gt;s</property>
+          </object>
+        </child>
       </object>
     </child>
   </object>
