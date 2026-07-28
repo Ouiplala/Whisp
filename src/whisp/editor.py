@@ -1419,8 +1419,14 @@ class NoteEditor(Gtk.Overlay):
                         img = Image.open(io.BytesIO(png_bytes.get_data()))
                         
                         # Convert to grayscale ('L' mode) to significantly speed up Tesseract
-                        # and reduce memory/CPU overhead, as color data isn't needed for OCR
                         img = img.convert('L')
+                        
+                        # Upscale the image by 2x using Lanczos resampling.
+                        # Screenshots are often 72-96 DPI, but Tesseract expects ~300 DPI for maximum accuracy.
+                        # This mathematically enhances small/blurry text for the neural net.
+                        width, height = img.size
+                        if width < 3000 and height < 3000:  # Prevent memory explosions on already-massive images
+                            img = img.resize((width * 2, height * 2), Image.Resampling.LANCZOS)
                         
                         # Extract text using Tesseract
                         extracted_text = pytesseract.image_to_string(img)
